@@ -6,9 +6,20 @@ import os
 import shutil
 import subprocess
 from pathlib import Path
-from typing import Generator
+from typing import Generator, Optional
 
 import pytest
+
+# Import headless installer if available (REQ-024)
+try:
+    from sif.bmad_installer import (
+        install_bmad_headless,
+        BMADInstallerConfig,
+        BMADInstallerError,
+    )
+    HEADLESS_INSTALLER_AVAILABLE = True
+except ImportError:
+    HEADLESS_INSTALLER_AVAILABLE = False
 
 
 # Test project location (as defined in project state)
@@ -105,9 +116,16 @@ def provisioned_test_project(
     use_installer = request.node.get_closest_marker("bmad_installer") is not None
 
     if use_installer:
-        # TODO: Implement when REQ-024 (headless wrapper) is ready
-        # For now, skip tests that require the real installer
-        pytest.skip("BMAD installer mode requires REQ-024 (headless wrapper)")
+        # REQ-024: Use headless BMAD wrapper for real installation
+        if not HEADLESS_INSTALLER_AVAILABLE:
+            pytest.skip("Headless installer not available (import failed)")
+
+        try:
+            result = _deploy_bmad_installer_mode(project_path)
+            if not result:
+                pytest.skip("BMAD installer failed - see logs for details")
+        except BMADInstallerError as e:
+            pytest.skip(f"BMAD installer error: {e}")
     else:
         # Copy Mode: Deploy BMAD from factory (fast, for testing)
         _deploy_bmad_copy_mode(project_path, factory_root, variant_path)
@@ -122,6 +140,41 @@ def provisioned_test_project(
         )
 
     yield project_path
+
+
+def _deploy_bmad_installer_mode(project_path: Path) -> bool:
+    """
+    Deploy BMAD using the real installer via headless wrapper (REQ-024).
+
+    Uses pexpect-based automation to run npx bmad-method install
+    without user interaction.
+
+    Args:
+        project_path: Target directory for BMAD installation
+
+    Returns:
+        True if installation succeeded, False otherwise
+    """
+    if not HEADLESS_INSTALLER_AVAILABLE:
+        return False
+
+    config = BMADInstallerConfig(
+        version="latest",  # Use latest for tests
+        user_name="TestUser",
+        language="English",
+        output_dir="_bmad-output",
+        timeout=180,  # 3 minutes for tests
+    )
+
+    try:
+        result = install_bmad_headless(
+            target_path=project_path,
+            config=config,
+            preserve_existing=False,
+        )
+        return result.success
+    except BMADInstallerError:
+        return False
 
 
 def _deploy_bmad_copy_mode(

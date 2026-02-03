@@ -1,5 +1,5 @@
 # Production dependencies
-# (none currently - uses stdlib only)
+pexpect>=4.8.0
 
 # Development dependencies
 pytest>=7.0.0

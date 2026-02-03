@@ -19,7 +19,9 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
 ]
 
-dependencies = []
+dependencies = [
+    "pexpect>=4.8.0",
+]
 
 [project.optional-dependencies]
 dev = [
@@ -34,7 +36,10 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["db*"]
+include = ["db*", "sif*"]
+
+[project.scripts]
+bmad-headless-install = "sif.bmad_installer:bmad_headless_install_cli"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -60,7 +65,7 @@ filterwarnings = [
 # Run only integration: pytest -m integration --run-integration
 
 [tool.coverage.run]
-source = ["db"]
+source = ["db", "sif"]
 branch = true
 omit = [
     "tests/*",
