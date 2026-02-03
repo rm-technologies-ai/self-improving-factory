@@ -196,6 +196,10 @@ Controlled distillation of specifications and code from legacy project into new 
 - [x] rm-claude-code repository created at ~/repos/rm-claude-code
 - [x] production-enterprise-grade variant deployed with CLAUDE.md, DAG.md, 3 skills
 - [x] CI workflow created for variant validation
+- [x] Refactored save-context → save-state (BMAD integration)
+- [x] Refactored load-context → load-state (BMAD integration)
+- [x] Skills added to rm-claude-code library
+- [x] Deprecated .claude/context/ in favor of _bmad-output/ state management
 
 ---
 
