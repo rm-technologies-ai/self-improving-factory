@@ -1457,7 +1457,17 @@ Submit PR to upstream BMAD-METHOD for native `--headless` flag support.
 **Type:** User Interface Component
 
 **Description:**
-The system provides a user-friendly interactive CLI to provision new projects or update existing ones. The installer dynamically presents options from data-driven configuration steps and proceeds to provision or update the target descendant repository.
+The system provides a user-friendly interactive CLI to provision new projects or update existing ones. The installer dynamically presents options from data-driven configuration steps and proceeds to provision or update the target descendant repository. The interface is colorful, friendly, and provides recommended defaults pre-selected for quick setup.
+
+**UX Design Principles:**
+
+| Principle | Implementation |
+|-----------|----------------|
+| **Colorful** | Rich terminal colors, emoji indicators, styled boxes |
+| **Friendly** | Welcoming messages, clear instructions, helpful hints |
+| **Smart Defaults** | Recommended options pre-selected, one-key acceptance |
+| **Progressive** | Show only relevant options, hide complexity |
+| **Forgiving** | Easy to go back, clear undo/cancel options |
 
 **CLI Entry Point:**
 
@@ -1475,18 +1485,37 @@ sif
 **User Experience Flow:**
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│  🏭 Self-Improving Factory                                   │
-│  ─────────────────────────────────────────────────────────  │
+╭──────────────────────────────────────────────────────────────╮
 │                                                              │
-│  What would you like to do?                                  │
+│   🏭  Self-Improving Factory  v0.1.0                         │
+│   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━                     │
 │                                                              │
-│  ○ Provision new project                                     │
-│  ○ Update existing project                                   │
-│  ○ Manage reuse libraries                                    │
-│  ○ Exit                                                      │
-└─────────────────────────────────────────────────────────────┘
+│   Welcome! Let's set up your project.                        │
+│                                                              │
+│   What would you like to do?                                 │
+│                                                              │
+│   ● Provision new project  (Recommended)                     │
+│   ○ Update existing project                                  │
+│   ○ Manage reuse libraries                                   │
+│   ○ Exit                                                     │
+│                                                              │
+│   ↑/↓ Navigate  ⏎ Select  q Quit                            │
+│                                                              │
+╰──────────────────────────────────────────────────────────────╯
 ```
+
+**Color Scheme:**
+
+| Element | Color | Purpose |
+|---------|-------|---------|
+| Headers/Titles | Cyan/Bold | Visual hierarchy |
+| Selected option | Green + ● | Clear selection state |
+| Recommended | Yellow badge | Guide user to best choice |
+| Success messages | Green | Positive feedback |
+| Warnings | Yellow | Attention needed |
+| Errors | Red | Problems to address |
+| Hints/Help | Dim/Gray | Secondary information |
+| Progress | Blue/Cyan | Activity indication |
 
 **Data-Driven Steps:**
 
@@ -1500,37 +1529,72 @@ The installer dynamically loads available options from:
 | `prompt_segments` table | CLAUDE.md variants |
 | Configuration files | Environment-specific settings |
 
-**Provisioning Flow:**
+**Provisioning Flow (with Smart Defaults):**
 
 ```
 1. Select Operation
-   └─> Provision / Update
+   └─> ● Provision (default) / ○ Update
 
 2. Target Selection
-   └─> New path / Existing project
+   └─> 📁 Enter path: ~/repos/my-project
+   └─> 💡 Hint: Directory will be created if it doesn't exist
 
-3. Project Type (data-driven)
-   └─> Python / TypeScript / Claude Code / Custom
+3. Project Type (data-driven, default pre-selected)
+   └─> ● Python (Recommended)
+   └─> ○ TypeScript
+   └─> ○ Claude Code Project
+   └─> ○ Custom
 
-4. CLAUDE.md Variant (data-driven)
-   └─> production-enterprise-grade / standard / minimal
+4. CLAUDE.md Variant (data-driven, default pre-selected)
+   └─> ● production-enterprise-grade (Recommended)
+   └─> ○ standard
+   └─> ○ minimal
 
-5. Components (data-driven, multi-select)
-   └─> [x] BMAD Method (mandatory)
-   └─> [x] SQLite Database
-   └─> [ ] GitHub Actions
-   └─> [ ] Docker Support
+5. Components (recommended defaults pre-checked)
+   └─> ✅ BMAD Method (Required)
+   └─> ✅ SQLite Database (Recommended)
+   └─> ✅ GitHub Actions (Recommended)
+   └─> ☐ Docker Support
+   └─> 💡 Press ⏎ to accept defaults, or customize
 
-6. Configuration
-   └─> Project name, author, etc.
+6. Configuration (smart defaults from environment)
+   └─> Project name: my-project (from path)
+   └─> Author: Roy (from git config)
+   └─> License: MIT (default)
+   └─> 💡 Press ⏎ to accept all defaults
 
-7. Confirmation
-   └─> Review selections, confirm
+7. Confirmation (visual summary)
+   ╭─────────────────────────────────────╮
+   │ 📋 Review Your Selections           │
+   ├─────────────────────────────────────┤
+   │ Path:     ~/repos/my-project        │
+   │ Type:     Python                    │
+   │ Variant:  production-enterprise     │
+   │ Components: BMAD, SQLite, Actions   │
+   ╰─────────────────────────────────────╯
+   └─> ● Confirm & Create / ○ Go Back / ○ Cancel
 
-8. Execution
-   └─> Progress display, step-by-step
-   └─> Compensation on failure
+8. Execution (animated progress)
+   └─> ⠋ Creating directory structure...
+   └─> ✓ Directory created
+   └─> ⠋ Installing BMAD Method...
+   └─> ✓ BMAD installed
+   └─> ⠋ Deploying CLAUDE.md...
+   └─> ✓ Complete!
 ```
+
+**Default Selection Rules:**
+
+| Step | Default | Rationale |
+|------|---------|-----------|
+| Operation | Provision | Most common action |
+| Project Type | Python | Most versatile |
+| CLAUDE.md Variant | production-enterprise-grade | Maximum quality |
+| BMAD Method | Required (locked) | Core functionality |
+| SQLite | Pre-selected | State management |
+| GitHub Actions | Pre-selected | CI/CD best practice |
+| Author | From `git config user.name` | Auto-detect |
+| License | MIT | Permissive default |
 
 **Update Flow:**
 
@@ -1594,16 +1658,21 @@ with Progress() as progress:
 
 **Acceptance Criteria:**
 - [ ] Interactive CLI launches with `sif` command
+- [ ] **Colorful UI** with rich terminal colors and emoji indicators
+- [ ] **Friendly messaging** with welcoming tone and helpful hints
+- [ ] **Smart defaults pre-selected** for quick one-key acceptance
+- [ ] Recommended options marked with "(Recommended)" badge
 - [ ] Options dynamically loaded from database/config
 - [ ] Project types loaded from `project_templates` table
 - [ ] Components loaded from `components` table
 - [ ] CLAUDE.md variants loaded from `prompt_segments` table
-- [ ] Clear progress indication during execution
+- [ ] Clear progress indication with animated spinners
 - [ ] Graceful error handling with compensation
 - [ ] Update mode detects existing project state
 - [ ] Customizations preserved during updates
-- [ ] Confirmation step before execution
+- [ ] Visual confirmation summary before execution
 - [ ] Headless mode available (--yes flag)
+- [ ] Keyboard navigation hints displayed
 
 **TDD Test Criteria:**
 ```
@@ -1639,6 +1708,28 @@ WHEN: A step fails
 THEN: Previous steps are compensated
 AND: User is notified of failure
 AND: System returns to clean state
+
+TEST: Colorful UI rendering
+GIVEN: User runs `sif` in a color-capable terminal
+WHEN: The wizard displays
+THEN: Headers are rendered in cyan/bold
+AND: Selected options are highlighted in green
+AND: Recommended badges are displayed in yellow
+AND: Progress spinners are animated
+
+TEST: Smart defaults pre-selected
+GIVEN: User starts provisioning wizard
+WHEN: Each step is displayed
+THEN: Recommended option is pre-selected (●)
+AND: User can press Enter to accept default
+AND: "(Recommended)" badge is visible
+
+TEST: One-key default acceptance
+GIVEN: User is on a step with smart defaults
+WHEN: User presses Enter without changing selection
+THEN: Default values are accepted
+AND: Wizard proceeds to next step
+AND: Entire flow can complete with Enter-only navigation
 ```
 
 **CLI Options:**
