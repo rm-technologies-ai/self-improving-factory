@@ -200,6 +200,10 @@ Controlled distillation of specifications and code from legacy project into new 
 - [x] Refactored load-context → load-state (BMAD integration)
 - [x] Skills added to rm-claude-code library
 - [x] Deprecated .claude/context/ in favor of _bmad-output/ state management
+- [x] Test infrastructure created (tests/unit/, tests/integration/)
+- [x] Integration test: Quickflow agent Python hello world smoke test
+- [x] pytest configured with markers (integration, slow, requires_claude)
+- [x] Structure tests verify provisioning (5 tests passing)
 
 ---
 

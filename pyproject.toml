@@ -1,0 +1,76 @@
+[project]
+name = "self-improving-factory"
+version = "0.1.0"
+description = "Headless/autonomous project provisioning system with idempotent operations and compensation logic"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+    {name = "Roy", email = "roy@example.com"}
+]
+keywords = ["provisioning", "automation", "claude", "bmad"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "pytest-timeout>=2.0.0",
+]
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["db*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-v",
+    "--tb=short",
+    "-ra",
+]
+markers = [
+    "integration: mark test as integration test (may invoke external processes)",
+    "slow: mark test as slow running",
+    "requires_claude: mark test as requiring Claude CLI to be installed",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]
+
+# Default: skip slow and integration tests unless explicitly requested
+# Run all tests: pytest --run-slow --run-integration
+# Run only integration: pytest -m integration --run-integration
+
+[tool.coverage.run]
+source = ["db"]
+branch = true
+omit = [
+    "tests/*",
+    "db/migrations/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+]
