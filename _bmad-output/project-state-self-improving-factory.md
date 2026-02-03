@@ -207,6 +207,7 @@ Controlled distillation of specifications and code from legacy project into new 
 - [x] REQ-019 updated: BMAD uses upstream installer (npx bmad-method install)
 - [x] REQ-024 added: Headless BMAD Installation Wrapper (for autonomous provisioning)
 - [x] Test fixtures updated with BMAD installer mode (pending REQ-024)
+- [x] REQ-025: Interactive Provisioning CLI defined (sif command)
 
 ---
 

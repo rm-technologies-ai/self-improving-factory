@@ -7,7 +7,7 @@ project_name: self-improving-factory
 status: active
 created: 2026-02-03
 last_updated: 2026-02-03
-version: 0.10.0
+version: 0.11.0
 ---
 
 ## Document Purpose
@@ -1450,6 +1450,233 @@ Submit PR to upstream BMAD-METHOD for native `--headless` flag support.
 
 ---
 
+### REQ-025: Interactive Provisioning CLI
+
+**Status:** Defined
+**Priority:** HIGH
+**Type:** User Interface Component
+
+**Description:**
+The system provides a user-friendly interactive CLI to provision new projects or update existing ones. The installer dynamically presents options from data-driven configuration steps and proceeds to provision or update the target descendant repository.
+
+**CLI Entry Point:**
+
+```bash
+# Provision new project
+sif provision [target-path]
+
+# Update existing project
+sif update [target-path]
+
+# Interactive mode (default)
+sif
+```
+
+**User Experience Flow:**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  🏭 Self-Improving Factory                                   │
+│  ─────────────────────────────────────────────────────────  │
+│                                                              │
+│  What would you like to do?                                  │
+│                                                              │
+│  ○ Provision new project                                     │
+│  ○ Update existing project                                   │
+│  ○ Manage reuse libraries                                    │
+│  ○ Exit                                                      │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Data-Driven Steps:**
+
+The installer dynamically loads available options from:
+
+| Source | Provides |
+|--------|----------|
+| `project_templates` table | Project type templates |
+| `components` table | Available components |
+| `reuse_libraries` table | Library options |
+| `prompt_segments` table | CLAUDE.md variants |
+| Configuration files | Environment-specific settings |
+
+**Provisioning Flow:**
+
+```
+1. Select Operation
+   └─> Provision / Update
+
+2. Target Selection
+   └─> New path / Existing project
+
+3. Project Type (data-driven)
+   └─> Python / TypeScript / Claude Code / Custom
+
+4. CLAUDE.md Variant (data-driven)
+   └─> production-enterprise-grade / standard / minimal
+
+5. Components (data-driven, multi-select)
+   └─> [x] BMAD Method (mandatory)
+   └─> [x] SQLite Database
+   └─> [ ] GitHub Actions
+   └─> [ ] Docker Support
+
+6. Configuration
+   └─> Project name, author, etc.
+
+7. Confirmation
+   └─> Review selections, confirm
+
+8. Execution
+   └─> Progress display, step-by-step
+   └─> Compensation on failure
+```
+
+**Update Flow:**
+
+```
+1. Select Target Project
+   └─> Browse / Enter path
+
+2. Detect Current State
+   └─> Read project configuration
+   └─> Identify installed components
+   └─> Check versions
+
+3. Update Options (data-driven)
+   └─> [ ] Update CLAUDE.md variant
+   └─> [ ] Add components
+   └─> [ ] Update BMAD Method
+   └─> [ ] Sync from libraries
+
+4. Preview Changes
+   └─> Show what will change
+   └─> Highlight conflicts
+
+5. Confirmation
+   └─> Review, confirm
+
+6. Execution
+   └─> Idempotent updates
+   └─> Preserve customizations
+```
+
+**UI Components (using @clack/prompts style):**
+
+```python
+# Example using Python inquirer/rich
+from rich.console import Console
+from rich.prompt import Prompt, Confirm
+from rich.progress import Progress
+
+console = Console()
+
+# Selection prompt
+project_type = Prompt.ask(
+    "Project type",
+    choices=load_project_types(),  # Data-driven
+    default="python"
+)
+
+# Multi-select
+components = inquirer.checkbox(
+    message="Select components",
+    choices=load_available_components(),  # Data-driven
+)
+
+# Progress display
+with Progress() as progress:
+    task = progress.add_task("Provisioning...", total=len(steps))
+    for step in steps:
+        execute_step(step)
+        progress.advance(task)
+```
+
+**Acceptance Criteria:**
+- [ ] Interactive CLI launches with `sif` command
+- [ ] Options dynamically loaded from database/config
+- [ ] Project types loaded from `project_templates` table
+- [ ] Components loaded from `components` table
+- [ ] CLAUDE.md variants loaded from `prompt_segments` table
+- [ ] Clear progress indication during execution
+- [ ] Graceful error handling with compensation
+- [ ] Update mode detects existing project state
+- [ ] Customizations preserved during updates
+- [ ] Confirmation step before execution
+- [ ] Headless mode available (--yes flag)
+
+**TDD Test Criteria:**
+```
+TEST: Interactive provisioning flow
+GIVEN: User runs `sif provision`
+WHEN: User selects project type, components, and confirms
+THEN: Project is provisioned with selected options
+AND: All selected components are installed
+AND: Progress is displayed throughout
+
+TEST: Data-driven option loading
+GIVEN: Database contains project templates
+WHEN: Provisioning wizard starts
+THEN: All templates appear as selectable options
+AND: Options are loaded dynamically
+
+TEST: Update existing project
+GIVEN: An existing provisioned project
+WHEN: User runs `sif update <path>`
+THEN: Current state is detected
+AND: Update options are presented
+AND: Customizations are preserved
+
+TEST: Headless provisioning
+GIVEN: A configuration file with all options
+WHEN: User runs `sif provision --config config.yaml --yes`
+THEN: Provisioning completes without prompts
+AND: All options from config are applied
+
+TEST: Compensation on failure
+GIVEN: Provisioning in progress
+WHEN: A step fails
+THEN: Previous steps are compensated
+AND: User is notified of failure
+AND: System returns to clean state
+```
+
+**CLI Options:**
+
+```bash
+sif [command] [options]
+
+Commands:
+  provision [path]     Provision new project
+  update [path]        Update existing project
+  list-templates       Show available project templates
+  list-components      Show available components
+
+Options:
+  --config <file>      Use configuration file
+  --yes, -y            Skip confirmation prompts
+  --dry-run            Show what would be done
+  --verbose, -v        Verbose output
+  --version            Show version
+  --help, -h           Show help
+```
+
+**Dependencies:**
+- Python 3.10+
+- rich (terminal UI)
+- inquirer or questionary (prompts)
+- click or typer (CLI framework)
+
+**Implementation Notes:**
+- CLI is the primary user interface for the factory
+- All options are data-driven (no hardcoded choices)
+- Supports both interactive and headless modes
+- Integrates with REQ-024 (headless BMAD wrapper) for BMAD installation
+- Uses database tables as source of truth for options
+- Progress display uses spinner and step indicators
+
+---
+
 ## 8. Non-Functional Requirements (NFR)
 
 ### NFR-001: Traceability
@@ -1488,6 +1715,7 @@ Submit PR to upstream BMAD-METHOD for native `--headless` flag support.
 | 2026-02-03 | REQ-023 | CLAUDE.md Deployment to Descendant Projects | Roy |
 | 2026-02-03 | REQ-019 | Updated: BMAD uses upstream installer (npx bmad-method install) | Roy |
 | 2026-02-03 | REQ-024 | Headless BMAD Installation Wrapper | Roy |
+| 2026-02-03 | REQ-025 | Interactive Provisioning CLI | Roy |
 
 ---
 
@@ -1506,7 +1734,7 @@ created_by: Barry (Quick Flow Solo Dev)
 maintained_by: Barry (Quick Flow Solo Dev)
 created_at: 2026-02-03
 last_updated: 2026-02-03
-version: 0.10.0
+version: 0.11.0
 status: active
 change_log:
   - "0.1.0: Initial requirements (REQ-001 to REQ-013, NFR-001 to NFR-004)"
@@ -1519,5 +1747,6 @@ change_log:
   - "0.8.0: Added Prompt Segments Database IMPLEMENTED (REQ-022)"
   - "0.9.0: Added CLAUDE.md Deployment to Descendant Projects (REQ-023)"
   - "0.10.0: Updated REQ-019 for upstream BMAD installer, added Headless Wrapper (REQ-024)"
+  - "0.11.0: Added Interactive Provisioning CLI (REQ-025)"
   - "0.9.0: Added CLAUDE.md Deployment to Descendant Projects (REQ-023)"
 ```
