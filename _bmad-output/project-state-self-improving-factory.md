@@ -204,6 +204,9 @@ Controlled distillation of specifications and code from legacy project into new 
 - [x] Integration test: Quickflow agent Python hello world smoke test
 - [x] pytest configured with markers (integration, slow, requires_claude)
 - [x] Structure tests verify provisioning (5 tests passing)
+- [x] REQ-019 updated: BMAD uses upstream installer (npx bmad-method install)
+- [x] REQ-024 added: Headless BMAD Installation Wrapper (for autonomous provisioning)
+- [x] Test fixtures updated with BMAD installer mode (pending REQ-024)
 
 ---
 

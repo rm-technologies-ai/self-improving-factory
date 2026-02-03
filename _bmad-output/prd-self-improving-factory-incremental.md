@@ -7,7 +7,7 @@ project_name: self-improving-factory
 status: active
 created: 2026-02-03
 last_updated: 2026-02-03
-version: 0.9.0
+version: 0.10.0
 ---
 
 ## Document Purpose
@@ -641,6 +641,19 @@ last_validated: <timestamp>
 **Description:**
 The BMAD method is installed as a component during the project provisioning process. It is included as a **mandatory default component** with an optional override to skip for special circumstances. The system must maintain installation options for headless/unattended installation of the BMAD method.
 
+**Upstream Installer:**
+
+The BMAD method has its own official installer:
+```bash
+npx bmad-method install
+# Or specific version:
+npx bmad-method@6.0.0-Beta.5 install
+```
+
+**Repository:** https://github.com/bmad-code-org/BMAD-METHOD
+
+**Current Limitation:** The upstream installer is **interactive only** - it requires user prompts via `@clack/prompts`. There is no built-in headless/non-interactive mode (as of v6.0.0-Beta.5).
+
 **Component Characteristics:**
 
 | Property | Value |
@@ -648,7 +661,8 @@ The BMAD method is installed as a component during the project provisioning proc
 | Component ID | `bmad-method` |
 | Default Behavior | **Mandatory** (installed by default) |
 | Skip Override | Optional flag to skip installation |
-| Installation Mode | Headless/unattended supported |
+| Installation Mode | Interactive (upstream) / Headless (via wrapper - REQ-024) |
+| Upstream Command | `npx bmad-method install` |
 
 **Installation Options:**
 
@@ -656,9 +670,8 @@ The BMAD method is installed as a component during the project provisioning proc
 bmad_method:
   enabled: true                    # Default: true (mandatory)
   skip: false                      # Override to skip installation
-  version: "latest"                # Version to install
-  variant: "default"               # CLAUDE.md variant from rm-claude-code
-  headless: true                   # Unattended installation mode
+  version: "latest"                # Version to install (e.g., "6.0.0-Beta.5")
+  headless: true                   # Use headless wrapper (REQ-024)
   config:
     user_name: "${PROJECT_OWNER}"
     communication_language: "English"
@@ -668,10 +681,9 @@ bmad_method:
 **Acceptance Criteria:**
 - [ ] BMAD method installed by default during provisioning
 - [ ] Skip override available via configuration flag
-- [ ] Headless installation completes without user prompts
+- [ ] Headless installation via wrapper (REQ-024) completes without user prompts
 - [ ] Installation is idempotent (safe to run multiple times)
 - [ ] BMAD version is configurable
-- [ ] BMAD variant (from rm-claude-code) is selectable
 - [ ] Installation logs all decisions for audit
 - [ ] Compensation logic handles installation failures
 
@@ -680,9 +692,9 @@ bmad_method:
 TEST: BMAD default installation
 GIVEN: A project provisioning request with default config
 WHEN: Provisioning is triggered
-THEN: BMAD method is installed
+THEN: BMAD method is installed via npx bmad-method install
 AND: _bmad folder structure is created
-AND: CLAUDE.md references BMAD components
+AND: .claude/commands/ contains BMAD slash commands
 
 TEST: BMAD skip override
 GIVEN: A project provisioning request with bmad_method.skip = true
@@ -694,16 +706,21 @@ AND: No BMAD-related files are created
 TEST: BMAD headless installation
 GIVEN: A project provisioning request with bmad_method.headless = true
 WHEN: Provisioning is triggered
-THEN: Installation completes without user prompts
+THEN: Headless wrapper (REQ-024) is used
+AND: Installation completes without user prompts
 AND: All configuration values come from config file
-AND: No interactive input is required
 
 TEST: BMAD installation idempotency
 GIVEN: A project with BMAD already installed
 WHEN: Provisioning is triggered again
 THEN: Existing BMAD configuration is preserved
 AND: No duplicate installations occur
-AND: Version upgrades are handled gracefully
+AND: Version upgrades are handled gracefully (quick-update mode)
+
+TEST: BMAD version pinning
+GIVEN: A provisioning request with bmad_method.version = "6.0.0-Beta.5"
+WHEN: Installation is triggered
+THEN: Specific version is installed via npx bmad-method@6.0.0-Beta.5
 ```
 
 **Headless Installation Parameters:**
@@ -711,12 +728,9 @@ AND: Version upgrades are handled gracefully
 | Parameter | Description | Required | Default |
 |-----------|-------------|----------|---------|
 | `version` | BMAD version to install | No | `latest` |
-| `variant` | rm-claude-code variant ID | No | `default` |
 | `user_name` | User name for config | No | from env or `Developer` |
 | `communication_language` | Language setting | No | `English` |
 | `output_folder` | BMAD output folder path | No | `_bmad-output` |
-| `planning_artifacts` | Planning artifacts path | No | `_bmad-output/planning-artifacts` |
-| `implementation_artifacts` | Implementation artifacts path | No | `_bmad-output/implementation-artifacts` |
 
 **Special Circumstances for Skip:**
 - Minimal/lightweight project configurations
@@ -725,10 +739,12 @@ AND: Version upgrades are handled gracefully
 - Legacy project migrations (gradual adoption)
 
 **Implementation Notes:**
-- BMAD method files sourced from rm-claude-code library
+- Uses upstream `npx bmad-method install` command
+- Headless mode requires wrapper (REQ-024) due to interactive upstream installer
 - Installation respects project-scope principle (REQ-016)
 - Configuration stored in `_bmad/bmm/config.yaml`
 - Skip override must be explicitly set (fail-safe default is install)
+- CLAUDE.md variant (rm-claude-code) is deployed separately per REQ-023
 
 ---
 
@@ -1305,6 +1321,135 @@ AND: Original state is restored
 
 ---
 
+### REQ-024: Headless BMAD Installation Wrapper
+
+**Status:** Defined
+**Priority:** HIGH
+**Type:** Tooling Component
+
+**Description:**
+The upstream BMAD installer (`npx bmad-method install`) is interactive and requires user prompts. This requirement defines a headless wrapper that enables unattended BMAD installation for autonomous provisioning workflows.
+
+**Problem Statement:**
+- Upstream BMAD installer uses `@clack/prompts` for interactive configuration
+- No built-in `--headless` or `--non-interactive` flag exists
+- Autonomous provisioning requires non-interactive installation
+
+**Solution Approaches:**
+
+| Approach | Pros | Cons |
+|----------|------|------|
+| **Expect Script Wrapper** | Works with current upstream | Brittle if prompts change |
+| **Upstream PR** | Clean solution | Dependency on upstream acceptance |
+| **Direct File Copy** | Simple, predictable | Misses installer logic, updates |
+| **Mock stdin** | No external deps | Complex, may break |
+
+**Recommended Approach:** Expect Script Wrapper (short-term) + Upstream PR (long-term)
+
+**Wrapper Specification:**
+
+```bash
+# Usage
+bmad-headless-install [options]
+
+# Options
+--version <version>     # BMAD version (default: latest)
+--user-name <name>      # User name for config
+--language <lang>       # Communication language (default: English)
+--output-dir <path>     # Output folder (default: _bmad-output)
+--modules <list>        # Modules to install (comma-separated)
+--skip-agents           # Skip agent compilation
+--debug                 # Enable debug output
+```
+
+**Wrapper Implementation (Python with pexpect):**
+
+```python
+import pexpect
+import sys
+
+def install_bmad_headless(
+    version: str = "latest",
+    user_name: str = "Developer",
+    language: str = "English",
+    output_dir: str = "_bmad-output",
+    modules: list = None,
+    timeout: int = 120
+) -> bool:
+    """
+    Install BMAD method non-interactively.
+
+    Uses pexpect to automate the interactive installer prompts.
+    """
+    cmd = f"npx bmad-method@{version} install"
+    child = pexpect.spawn(cmd, timeout=timeout)
+
+    # Handle prompts based on expected sequence
+    # (Prompt patterns to be determined from installer)
+
+    child.expect(pexpect.EOF)
+    return child.exitstatus == 0
+```
+
+**Acceptance Criteria:**
+- [ ] Wrapper installs BMAD without user interaction
+- [ ] All configuration options passable via CLI flags
+- [ ] Works with pinned BMAD versions
+- [ ] Handles installer updates gracefully (version detection)
+- [ ] Logs all automated responses for audit
+- [ ] Fails cleanly if prompt sequence changes
+- [ ] Compensation logic for failed installations
+
+**TDD Test Criteria:**
+```
+TEST: Headless installation basic
+GIVEN: A target directory and default config
+WHEN: bmad-headless-install is executed
+THEN: BMAD is installed without prompts
+AND: _bmad/ structure is created
+AND: .claude/commands/ contains slash commands
+
+TEST: Headless installation with options
+GIVEN: Custom user_name, language, and output_dir
+WHEN: bmad-headless-install --user-name "Roy" --language "English" --output-dir "_custom"
+THEN: Configuration reflects provided options
+AND: Output directory matches specified path
+
+TEST: Version pinning
+GIVEN: A specific BMAD version requirement
+WHEN: bmad-headless-install --version "6.0.0-Beta.5"
+THEN: Exactly that version is installed
+AND: Version is logged for audit
+
+TEST: Installer prompt change detection
+GIVEN: BMAD installer has changed prompt sequence
+WHEN: bmad-headless-install runs
+THEN: Failure is detected and reported
+AND: Clear error message indicates prompt mismatch
+AND: No partial installation left behind
+
+TEST: Idempotent reinstallation
+GIVEN: BMAD already installed in target
+WHEN: bmad-headless-install is executed
+THEN: Quick-update mode is triggered
+AND: Existing configuration is preserved
+```
+
+**Dependencies:**
+- Python 3.10+
+- pexpect (for expect-style automation)
+- Node.js 20+ (for npx)
+
+**Integration Points:**
+- Called by provisioning orchestrator (REQ-010)
+- Used before CLAUDE.md deployment (REQ-023)
+- Respects project-scope installation (REQ-016)
+
+**Future Consideration:**
+Submit PR to upstream BMAD-METHOD for native `--headless` flag support.
+
+---
+
 ## 8. Non-Functional Requirements (NFR)
 
 ### NFR-001: Traceability
@@ -1341,6 +1486,8 @@ AND: Original state is restored
 | 2026-02-03 | REQ-021 | Library-First Asset Management Pattern (CRITICAL operational pattern) | Roy |
 | 2026-02-03 | REQ-022 | Prompt Segments Database IMPLEMENTED (composable CLAUDE.md) | Roy/Barry |
 | 2026-02-03 | REQ-023 | CLAUDE.md Deployment to Descendant Projects | Roy |
+| 2026-02-03 | REQ-019 | Updated: BMAD uses upstream installer (npx bmad-method install) | Roy |
+| 2026-02-03 | REQ-024 | Headless BMAD Installation Wrapper | Roy |
 
 ---
 
@@ -1359,7 +1506,7 @@ created_by: Barry (Quick Flow Solo Dev)
 maintained_by: Barry (Quick Flow Solo Dev)
 created_at: 2026-02-03
 last_updated: 2026-02-03
-version: 0.9.0
+version: 0.10.0
 status: active
 change_log:
   - "0.1.0: Initial requirements (REQ-001 to REQ-013, NFR-001 to NFR-004)"
@@ -1370,5 +1517,7 @@ change_log:
   - "0.6.0: Added Production Enterprise Grade variant (REQ-020)"
   - "0.7.0: Added Library-First Asset Management Pattern (REQ-021)"
   - "0.8.0: Added Prompt Segments Database IMPLEMENTED (REQ-022)"
+  - "0.9.0: Added CLAUDE.md Deployment to Descendant Projects (REQ-023)"
+  - "0.10.0: Updated REQ-019 for upstream BMAD installer, added Headless Wrapper (REQ-024)"
   - "0.9.0: Added CLAUDE.md Deployment to Descendant Projects (REQ-023)"
 ```

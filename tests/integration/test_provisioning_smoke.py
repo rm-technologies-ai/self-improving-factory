@@ -183,6 +183,50 @@ Do not display menus or wait for input. Execute autonomously.
 
 
 @pytest.mark.integration
+@pytest.mark.bmad_installer
+class TestBMADInstallerMode:
+    """
+    Tests that use the real BMAD installer (npx bmad-method install).
+
+    These tests are skipped until REQ-024 (Headless BMAD Wrapper) is implemented.
+    The upstream BMAD installer is interactive and requires user prompts.
+
+    See: https://github.com/bmad-code-org/BMAD-METHOD
+    """
+
+    def test_bmad_installer_creates_structure(
+        self,
+        provisioned_test_project: Path
+    ):
+        """
+        Test that real BMAD installer creates expected structure.
+
+        This test uses `npx bmad-method install` via the headless wrapper.
+        """
+        project_path = provisioned_test_project
+
+        # Verify BMAD structure created by installer
+        assert (project_path / "_bmad").exists()
+        assert (project_path / ".claude" / "commands").exists()
+
+        # Verify config file
+        config_file = project_path / "_bmad" / "bmm" / "config.yaml"
+        assert config_file.exists()
+
+    def test_bmad_installer_version_pinning(
+        self,
+        clean_test_project: Path
+    ):
+        """
+        Test that specific BMAD version can be installed.
+
+        Uses: npx bmad-method@6.0.0-Beta.5 install
+        """
+        # This test will be implemented with REQ-024
+        pytest.skip("Requires REQ-024 (headless wrapper)")
+
+
+@pytest.mark.integration
 class TestProvisioningStructure:
     """
     Tests that verify the provisioned project structure is correct.

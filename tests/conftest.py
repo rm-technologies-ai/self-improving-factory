@@ -76,20 +76,66 @@ def clean_test_project(test_project_path: Path) -> Generator[Path, None, None]:
 def provisioned_test_project(
     clean_test_project: Path,
     rm_claude_code_path: Path,
-    factory_root: Path
+    factory_root: Path,
+    request
 ) -> Generator[Path, None, None]:
     """
     Fixture that provides a provisioned test project with CLAUDE.md and BMAD.
 
-    This simulates the provisioning process by copying:
-    - CLAUDE.md from rm-claude-code production-enterprise-grade variant
-    - _bmad/ structure from factory
-    - .claude/commands/ for slash commands
+    BMAD Installation Modes:
+    -------------------------
+    1. **Copy Mode** (default for tests): Copies _bmad/ from factory
+       - Fast, deterministic, no external dependencies
+       - Used for structure validation tests
+
+    2. **Installer Mode** (production): Uses `npx bmad-method install`
+       - Requires Node.js 20+, network access
+       - Interactive (requires headless wrapper - REQ-024)
+       - Set marker `@pytest.mark.bmad_installer` to use
+
+    For now, tests use Copy Mode. When REQ-024 (Headless BMAD Wrapper) is
+    implemented, integration tests can optionally use the real installer.
+
+    See: https://github.com/bmad-code-org/BMAD-METHOD
     """
     project_path = clean_test_project
     variant_path = rm_claude_code_path / "variants" / "production-enterprise-grade"
 
-    # Deploy CLAUDE.md
+    # Check if test requests real BMAD installer
+    use_installer = request.node.get_closest_marker("bmad_installer") is not None
+
+    if use_installer:
+        # TODO: Implement when REQ-024 (headless wrapper) is ready
+        # For now, skip tests that require the real installer
+        pytest.skip("BMAD installer mode requires REQ-024 (headless wrapper)")
+    else:
+        # Copy Mode: Deploy BMAD from factory (fast, for testing)
+        _deploy_bmad_copy_mode(project_path, factory_root, variant_path)
+
+    # Initialize git if not exists
+    if not (project_path / ".git").exists():
+        subprocess.run(
+            ["git", "init"],
+            cwd=project_path,
+            capture_output=True,
+            check=True
+        )
+
+    yield project_path
+
+
+def _deploy_bmad_copy_mode(
+    project_path: Path,
+    factory_root: Path,
+    variant_path: Path
+) -> None:
+    """
+    Deploy BMAD and CLAUDE.md by copying files (test mode).
+
+    This simulates provisioning without invoking the real BMAD installer.
+    Used for fast, deterministic testing.
+    """
+    # Deploy CLAUDE.md from rm-claude-code variant
     claude_md_src = variant_path / "CLAUDE.md"
     if claude_md_src.exists():
         shutil.copy(claude_md_src, project_path / "CLAUDE.md")
@@ -99,7 +145,7 @@ def provisioned_test_project(
     if claude_add_src.exists():
         shutil.copy(claude_add_src, project_path / "CLAUDE-ADD.md")
 
-    # Deploy _bmad/ structure
+    # Deploy _bmad/ structure from factory
     bmad_src = factory_root / "_bmad"
     if bmad_src.exists():
         shutil.copytree(bmad_src, project_path / "_bmad")
@@ -112,17 +158,6 @@ def provisioned_test_project(
 
     # Create _bmad-output/ directory
     (project_path / "_bmad-output").mkdir(exist_ok=True)
-
-    # Initialize git if not exists
-    if not (project_path / ".git").exists():
-        subprocess.run(
-            ["git", "init"],
-            cwd=project_path,
-            capture_output=True,
-            check=True
-        )
-
-    yield project_path
 
 
 def pytest_configure(config):
@@ -138,4 +173,8 @@ def pytest_configure(config):
     config.addinivalue_line(
         "markers",
         "requires_claude: mark test as requiring Claude CLI"
+    )
+    config.addinivalue_line(
+        "markers",
+        "bmad_installer: mark test as requiring real BMAD installer (npx bmad-method install)"
     )
